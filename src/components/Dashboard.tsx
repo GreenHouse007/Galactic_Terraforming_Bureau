@@ -206,10 +206,15 @@ export default function Dashboard() {
       </div>
 
       {/* Stats footer */}
-      <footer className="mt-6 py-3 border-t border-gray-800 flex justify-center gap-6 text-xs text-gray-500">
-        <span>Clicks: {statistics.totalClicks.toLocaleString()}</span>
-        <span>Playtime: {formatPlaytime(statistics.playtime)}</span>
-        <span>Total: {formatNumber(totalEnergyGenerated)}</span>
+      <footer className="mt-6 py-3 border-t border-gray-800">
+        <div className="flex justify-center gap-6 text-xs text-gray-500">
+          <span>Clicks: {statistics.totalClicks.toLocaleString()}</span>
+          <span>Playtime: {formatPlaytime(statistics.playtime)}</span>
+          <span>Total: {formatNumber(totalEnergyGenerated)}</span>
+        </div>
+        <p className="text-center text-[10px] text-gray-600 mt-1">
+          Icons by <a href="https://game-icons.net" target="_blank" className="underline">game-icons.net</a> (CC BY 3.0)
+        </p>
       </footer>
     </div>
   )

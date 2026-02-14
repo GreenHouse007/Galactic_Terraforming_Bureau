@@ -46,8 +46,8 @@ body {
 .animate-click-bounce { animation: click-bounce 0.15s ease-out; }
 
 @keyframes twinkle {
-  0%, 100% { opacity: 0.2; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.5; }
 }
 .twinkle-slow { animation: twinkle 4s ease-in-out infinite; }
 .twinkle-med  { animation: twinkle 2.5s ease-in-out infinite; }

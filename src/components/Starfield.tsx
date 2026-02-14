@@ -37,8 +37,8 @@ export default function Starfield() {
   return (
     <svg
       className="fixed inset-0 z-0 pointer-events-none"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
+      viewBox="0 0 1920 1080"
+      preserveAspectRatio="xMidYMid slice"
       width="100%"
       height="100%"
     >

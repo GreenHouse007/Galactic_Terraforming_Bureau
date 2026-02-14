@@ -7,7 +7,15 @@
       "Bash(node -e:*)",
       "Bash(npx tsc:*)",
       "Bash(timeout 8 npx vite:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:game-icons.net)",
+      "Bash(for icon in \"lorc/mining\" \"lorc/pickaxe\" \"delapouite/mining\" \"delapouite/war-pick\" \"lorc/ice-bolt\" \"lorc/solar-power\" \"delapouite/solar-power\" \"lorc/atom\" \"delapouite/atom\")",
+      "Bash(do echo \"=== $icon ===\")",
+      "Bash(curl:*)",
+      "Bash(done)",
+      "Bash(for icon in \"lorc/gears\" \"delapouite/gears\" \"lorc/gear-hammer\" \"lorc/cog\" \"delapouite/cog\" \"lorc/cogsplosion\" \"lorc/orbital\" \"lorc/convergence-target\" \"lorc/mesh-network\" \"lorc/materials-science\" \"lorc/split-cross\" \"lorc/medal\" \"lorc/sparkles\" \"lorc/crystal-shine\" \"lorc/lightning-helix\" \"lorc/power-lightning\" \"lorc/frozen-orb\" \"lorc/crystal-ball\")",
+      "Bash(for icon in \"lorc/solar-flare\" \"delapouite/solar-panels\" \"lorc/sun-radiations\" \"lorc/sunbeams\" \"delapouite/mesh-network\" \"delapouite/mesh-ball\" \"lorc/connected\" \"lorc/star-formation\" \"lorc/nuclear\" \"delapouite/nuclear-plant\" \"delapouite/nuclear\" \"lorc/convergence-target\" \"delapouite/convergence-target\" \"lorc/laser-precision\" \"lorc/target-laser\" \"lorc/focused-lightning\")",
+      "Bash(for icon in \"lorc/mining\" \"delapouite/war-pick\" \"delapouite/nuclear-plant\" \"lorc/cogsplosion\" \"lorc/orbital\" \"delapouite/convergence-target\" \"delapouite/mesh-network\" \"lorc/materials-science\" \"lorc/medal\" \"lorc/crystal-shine\" \"lorc/power-lightning\" \"lorc/frozen-orb\" \"lorc/sunbeams\")"
     ]
   }
 }
