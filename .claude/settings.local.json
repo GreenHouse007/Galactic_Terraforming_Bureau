@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(node -e:*)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 8 npx vite:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}
