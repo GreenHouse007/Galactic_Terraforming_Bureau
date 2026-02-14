@@ -1,3 +1,5 @@
+import { useGameStore } from '../store/gameStore'
+
 const TWINKLE_CLASSES = ['twinkle-slow', 'twinkle-med', 'twinkle-fast'] as const
 
 interface Star {
@@ -20,7 +22,7 @@ function seededRandom(seed: number) {
 const stars: Star[] = (() => {
   const rand = seededRandom(42)
   const result: Star[] = []
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 220; i++) {
     result.push({
       cx: rand() * 1920,
       cy: rand() * 1080,
@@ -33,7 +35,13 @@ const stars: Star[] = (() => {
   return result
 })()
 
+const STAR_COUNTS = [80, 100, 120, 150, 180, 220] as const
+
 export default function Starfield() {
+  const planets = useGameStore((s) => s.planets)
+  const unlockedCount = planets.filter((p) => p.unlocked).length
+  const starCount = STAR_COUNTS[Math.min(unlockedCount, STAR_COUNTS.length - 1)]
+
   return (
     <svg
       className="fixed inset-0 z-0 pointer-events-none"
@@ -42,7 +50,7 @@ export default function Starfield() {
       width="100%"
       height="100%"
     >
-      {stars.map((star, i) => (
+      {stars.slice(0, starCount).map((star, i) => (
         <circle
           key={i}
           cx={star.cx}

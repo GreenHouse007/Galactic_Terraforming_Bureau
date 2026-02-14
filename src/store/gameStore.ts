@@ -19,6 +19,7 @@ import {
   formatNumber,
 } from '../game/formulas'
 import { calculateOfflineEnergy } from '../game/offlineProgress'
+import { audioManager } from '../audio/audioManager'
 import { saveGame, loadGame, deleteSave } from '../utils/persistence'
 
 export type Toast = { id: number; message: string; type: 'achievement' | 'event' | 'prestige' }
@@ -82,6 +83,7 @@ export const useGameStore = create<Store>((set, get) => ({
     const id = ++toastCounter
     set((s) => ({ toasts: [...s.toasts, { id, message, type }] }))
     setTimeout(() => get().removeToast(id), 3000)
+    if (type === 'achievement') audioManager.playSfx('achievement')
   },
 
   removeToast: (id: number) => {
@@ -138,6 +140,7 @@ export const useGameStore = create<Store>((set, get) => ({
 
     set({ energy: state.energy - totalCost, upgrades: newUpgrades })
     get().recalcDerived()
+    audioManager.playSfx('purchase')
 
     // Check achievements on purchase
     const newState = get()
@@ -172,6 +175,7 @@ export const useGameStore = create<Store>((set, get) => ({
 
     set({ energy: energyAfter, planets: newPlanets })
     get().recalcDerived()
+    audioManager.playSfx('purchase')
 
     // Check achievements
     const newState = get()
@@ -228,6 +232,7 @@ export const useGameStore = create<Store>((set, get) => ({
         nextEventTime: getRandomEventTime(),
       }
       get().addToast(`Event: ${eventDef.name}! Click to activate!`, 'event')
+      audioManager.playSfx('event')
     }
 
     // Pending event expiry
@@ -324,6 +329,7 @@ export const useGameStore = create<Store>((set, get) => ({
     })
     get().recalcDerived()
     get().addToast(`Stellar Reset! Earned ${formatNumber(dustGain)} dust`, 'prestige')
+    audioManager.playSfx('prestige')
 
     // Check prestige achievements
     const newState = get()

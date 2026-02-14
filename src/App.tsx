@@ -3,6 +3,8 @@ import { useGameStore } from './store/gameStore'
 import { formatNumber } from './game/formulas'
 import Dashboard from './components/Dashboard'
 import Starfield from './components/Starfield'
+import { audioManager } from './audio/audioManager'
+import { useAudioSettings } from './audio/useAudioSettings'
 
 const AUTO_SAVE_INTERVAL = 30_000
 
@@ -27,6 +29,31 @@ export default function App() {
       setLoaded(true)
     })
   }, [loadGameState])
+
+  // Initialize audio on first user interaction (browser autoplay policy)
+  useEffect(() => {
+    if (!loaded) return
+    const settings = useAudioSettings.getState()
+    const startAudio = () => {
+      audioManager.setMusicVolume(settings.musicVolume)
+      audioManager.setSfxVolume(settings.sfxVolume)
+      audioManager.setMuted(settings.muted)
+      audioManager.setMusicEnabled(settings.musicEnabled)
+      audioManager.setSfxEnabled(settings.sfxEnabled)
+      audioManager.init()
+      if (settings.musicEnabled && !settings.muted) {
+        audioManager.playMusic()
+      }
+      document.removeEventListener('click', startAudio)
+      document.removeEventListener('touchstart', startAudio)
+    }
+    document.addEventListener('click', startAudio, { once: true })
+    document.addEventListener('touchstart', startAudio, { once: true })
+    return () => {
+      document.removeEventListener('click', startAudio)
+      document.removeEventListener('touchstart', startAudio)
+    }
+  }, [loaded])
 
   // rAF game loop
   useEffect(() => {

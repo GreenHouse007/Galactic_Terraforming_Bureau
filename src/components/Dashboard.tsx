@@ -10,6 +10,7 @@ import PlanetsList from './PlanetsList'
 import ResearchTree from './ResearchTree'
 import PrestigePanel from './PrestigePanel'
 import { IconTrophy, IconMedal, IconStar, EVENT_ICONS } from './Icons'
+import SettingsMenu from './SettingsMenu'
 
 type Tab = 'production' | 'research' | 'planets' | 'prestige'
 
@@ -69,6 +70,7 @@ export default function Dashboard() {
           Galactic Terraforming Bureau
         </h1>
         <div className="flex gap-2">
+          <SettingsMenu />
           <button
             onClick={handleSave}
             className="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
