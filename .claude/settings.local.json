@@ -18,7 +18,9 @@
       "Bash(for icon in \"lorc/mining\" \"delapouite/war-pick\" \"delapouite/nuclear-plant\" \"lorc/cogsplosion\" \"lorc/orbital\" \"delapouite/convergence-target\" \"delapouite/mesh-network\" \"lorc/materials-science\" \"lorc/medal\" \"lorc/crystal-shine\" \"lorc/power-lightning\" \"lorc/frozen-orb\" \"lorc/sunbeams\")",
       "WebSearch",
       "WebFetch(domain:opengameart.org)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(npx --yes sharp-cli:*)",
+      "Bash(npx sharp-cli:*)"
     ]
   }
 }

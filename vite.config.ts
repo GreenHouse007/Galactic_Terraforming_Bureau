@@ -8,8 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Galactic Terraforming Bureau',
-        short_name: 'GTB',
+        name: 'Idle Game',
+        short_name: 'Idle Game',
         description: 'An idle game about terraforming planets',
         theme_color: '#0a0e1a',
         background_color: '#0a0e1a',
