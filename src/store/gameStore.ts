@@ -140,7 +140,6 @@ export const useGameStore = create<Store>((set, get) => ({
 
     set({ energy: state.energy - totalCost, upgrades: newUpgrades })
     get().recalcDerived()
-    audioManager.playSfx('purchase')
 
     // Check achievements on purchase
     const newState = get()

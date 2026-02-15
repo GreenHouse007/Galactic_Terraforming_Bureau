@@ -5,7 +5,7 @@ export const PLANETS: PlanetDefinition[] = [
     id: 'mars',
     name: 'Mars',
     description: 'The Red Planet — first step in terraforming',
-    unlockCost: 100,
+    unlockCost: 250,
     multiplier: 1.5,
     specialEffect: {
       type: 'clickPower',
@@ -17,7 +17,7 @@ export const PLANETS: PlanetDefinition[] = [
     id: 'venus',
     name: 'Venus',
     description: 'Tame the acid clouds for massive gain',
-    unlockCost: 1_500,
+    unlockCost: 5_000,
     multiplier: 2,
     specialEffect: {
       type: 'offlineEfficiency',
@@ -29,7 +29,7 @@ export const PLANETS: PlanetDefinition[] = [
     id: 'europa',
     name: 'Europa',
     description: "Jupiter's icy moon hides vast potential",
-    unlockCost: 15_000,
+    unlockCost: 50_000,
     multiplier: 3,
     specialEffect: {
       type: 'upgradeCostReduction',
@@ -41,7 +41,7 @@ export const PLANETS: PlanetDefinition[] = [
     id: 'titan',
     name: 'Titan',
     description: "Saturn's largest moon, rich in resources",
-    unlockCost: 150_000,
+    unlockCost: 500_000,
     multiplier: 5,
     specialEffect: {
       type: 'passiveGeneration',
@@ -53,7 +53,7 @@ export const PLANETS: PlanetDefinition[] = [
     id: 'proxima_b',
     name: 'Proxima Centauri b',
     description: 'The first interstellar colony',
-    unlockCost: 1_500_000,
+    unlockCost: 5_000_000,
     multiplier: 10,
     specialEffect: {
       type: 'eventDuration',

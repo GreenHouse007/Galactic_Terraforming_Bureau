@@ -3,7 +3,6 @@ import { useGameStore } from '../store/gameStore'
 import { formatNumber } from '../game/formulas'
 import { IconEnergyOrb } from './Icons'
 import { PLANET_ICONS } from './Icons'
-import { audioManager } from '../audio/audioManager'
 
 interface Floater {
   id: number
@@ -53,7 +52,6 @@ export default function ClickGenerator() {
 
   const handleClick = useCallback(() => {
     click()
-    audioManager.playSfx('click')
     setBouncing(true)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setBouncing(false))
@@ -80,6 +78,7 @@ export default function ClickGenerator() {
     outline: tier.ring === 'none' ? undefined : tier.ring,
     outlineOffset: '3px',
     transition: 'all 0.5s ease',
+    touchAction: 'manipulation',
   }
 
   if (timesPrestiged >= 1) {
@@ -92,7 +91,7 @@ export default function ClickGenerator() {
       <div className="relative w-56 h-56 flex items-center justify-center">
         {/* Planet orbit ring */}
         {unlockedPlanets.length > 0 && (
-          <div className="absolute inset-0 animate-orbit">
+          <div className="absolute inset-0 animate-orbit pointer-events-none">
             {unlockedPlanets.map((planet, i) => {
               const angle = PLANET_ANGLE_START + (i * 2 * Math.PI) / 5
               const x = Math.cos(angle) * ORBIT_RADIUS
