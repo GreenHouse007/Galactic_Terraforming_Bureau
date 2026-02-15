@@ -4,7 +4,7 @@ export const EVENT_DEFINITIONS: GameEventDefinition[] = [
   {
     id: 'solar_flare',
     name: 'Solar Flare',
-    description: 'A burst of solar energy doubles all revenue!',
+    description: 'A burst of solar energy doubles production!',
     duration: 30,
     effectType: 'production',
     effectValue: 2,
@@ -12,15 +12,15 @@ export const EVENT_DEFINITIONS: GameEventDefinition[] = [
   {
     id: 'meteor_shower',
     name: 'Meteor Shower',
-    description: 'Meteor fragments triple all revenue!',
+    description: 'Meteor fragments triple click power!',
     duration: 60,
-    effectType: 'revenue',
+    effectType: 'click',
     effectValue: 3,
   },
   {
     id: 'wormhole',
     name: 'Wormhole Discount',
-    description: 'A wormhole reduces generator costs by 30%!',
+    description: 'A wormhole reduces upgrade costs by 30%!',
     duration: 45,
     effectType: 'costReduction',
     effectValue: 0.30,
@@ -28,7 +28,7 @@ export const EVENT_DEFINITIONS: GameEventDefinition[] = [
   {
     id: 'nebula_burst',
     name: 'Nebula Energy Burst',
-    description: 'A nebula explosion boosts revenue 5x!',
+    description: 'A nebula explosion boosts production 5x!',
     duration: 15,
     effectType: 'production',
     effectValue: 5,

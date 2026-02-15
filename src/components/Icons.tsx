@@ -272,15 +272,15 @@ export function IconEnergyOrb({ className }: IconProps) {
 
 // ── Lookup Maps ──
 
-export const GENERATOR_ICONS: Record<string, ComponentType<IconProps>> = {
-  solar_panel: IconSolarPanel,
-  wind_turbine: IconExtractor,
-  fusion_reactor: IconFusionReactor,
-  quantum_harvester: IconQuantumHarvester,
-  antimatter_plant: IconAntimatter,
-  dark_energy_tap: IconEfficiency,
-  dyson_sphere: IconGravityLens,
-  cosmic_string: IconSynergyMatrix,
+export const UPGRADE_ICONS: Record<string, ComponentType<IconProps>> = {
+  click_boost_1: IconExtractor,
+  generator_solar: IconSolarPanel,
+  generator_fusion: IconFusionReactor,
+  multiplier_efficiency: IconEfficiency,
+  generator_quantum: IconQuantumHarvester,
+  click_boost_2: IconGravityLens,
+  multiplier_synergy: IconSynergyMatrix,
+  generator_antimatter: IconAntimatter,
 }
 
 export const PLANET_ICONS: Record<string, ComponentType<IconProps>> = {
@@ -292,11 +292,12 @@ export const PLANET_ICONS: Record<string, ComponentType<IconProps>> = {
 }
 
 export const RESEARCH_ICONS: Record<string, ComponentType<IconProps>> = {
+  res_auto_click: IconAutoExtractor,
   res_bulk_buy: IconBulkBuy,
   res_offline: IconSubspaceRelay,
   res_planet_refund: IconPlanetarySalvage,
-  res_revenue_boost: IconQuantumTunnel,
-  res_tier2_unlock: IconAntimatterTheory,
+  res_passive_boost: IconQuantumTunnel,
+  res_antimatter_unlock: IconAntimatterTheory,
   res_prestige_boost: IconStellarCartography,
 }
 

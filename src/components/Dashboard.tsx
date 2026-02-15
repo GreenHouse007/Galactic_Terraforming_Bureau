@@ -4,15 +4,15 @@ import { formatNumber } from '../game/formulas'
 import { ACHIEVEMENTS } from '../game/achievements'
 import { EVENT_DEFINITIONS } from '../game/events'
 import EnergyDisplay from './EnergyDisplay'
-import GeneratorList from './GeneratorList'
-import ManagerShop from './ManagerShop'
+import ClickGenerator from './ClickGenerator'
+import UpgradesList from './UpgradesList'
 import PlanetsList from './PlanetsList'
 import ResearchTree from './ResearchTree'
 import PrestigePanel from './PrestigePanel'
 import { IconTrophy, IconMedal, IconStar, EVENT_ICONS } from './Icons'
 import SettingsMenu from './SettingsMenu'
 
-type Tab = 'generators' | 'managers' | 'research' | 'planets' | 'prestige'
+type Tab = 'production' | 'research' | 'planets' | 'prestige'
 
 export default function Dashboard() {
   const saveGameState = useGameStore((s) => s.saveGameState)
@@ -23,7 +23,7 @@ export default function Dashboard() {
   const events = useGameStore((s) => s.events)
   const activateEvent = useGameStore((s) => s.activateEvent)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<Tab>('generators')
+  const [activeTab, setActiveTab] = useState<Tab>('production')
 
   const handleSave = async () => {
     setSaving(true)
@@ -56,8 +56,7 @@ export default function Dashboard() {
     : 0
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'generators', label: 'Generators' },
-    { id: 'managers', label: 'Managers' },
+    { id: 'production', label: 'Production' },
     { id: 'research', label: 'Research' },
     { id: 'planets', label: 'Planets' },
     { id: 'prestige', label: 'Prestige' },
@@ -87,8 +86,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Energy display */}
+      {/* Always visible: Energy + Click */}
       <EnergyDisplay />
+      <ClickGenerator />
 
       {/* Event banner */}
       {pendingEventDef && events.pendingEvent && (
@@ -160,9 +160,9 @@ export default function Dashboard() {
 
       {/* Tab content */}
       <div className="flex-1">
-        {activeTab === 'generators' && (
+        {activeTab === 'production' && (
           <div>
-            <GeneratorList />
+            <UpgradesList />
 
             {/* Achievements section */}
             <div className="mt-6">
@@ -186,7 +186,7 @@ export default function Dashboard() {
                       >
                         {(() => {
                           const iconClass = `w-4 h-4 ${unlocked ? 'text-yellow-400' : 'text-gray-600'}`
-                          if (ach.bonusType === 'revenue') return <IconTrophy className={iconClass} />
+                          if (ach.bonusType === 'click') return <IconTrophy className={iconClass} />
                           if (ach.bonusType === 'production' || ach.bonusType === 'costReduction') return <IconMedal className={iconClass} />
                           return <IconStar className={iconClass} />
                         })()}
@@ -202,7 +202,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        {activeTab === 'managers' && <ManagerShop />}
         {activeTab === 'research' && <ResearchTree />}
         {activeTab === 'planets' && <PlanetsList />}
         {activeTab === 'prestige' && <PrestigePanel />}
@@ -211,6 +210,7 @@ export default function Dashboard() {
       {/* Stats footer */}
       <footer className="mt-6 py-3 border-t border-gray-800">
         <div className="flex justify-center gap-6 text-xs text-gray-500">
+          <span>Clicks: {statistics.totalClicks.toLocaleString()}</span>
           <span>Playtime: {formatPlaytime(statistics.playtime)}</span>
           <span>Total: {formatNumber(totalEnergyGenerated)}</span>
         </div>
