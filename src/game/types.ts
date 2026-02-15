@@ -1,27 +1,29 @@
-export type UpgradeType = 'click' | 'passive' | 'multiplier'
-
-export interface UpgradeDefinition {
+export interface GeneratorDef {
   id: string
   name: string
   description: string
-  type: UpgradeType
   baseCost: number
   costScaling: number
-  baseEffect: number
-  effectScaling: number
-  gatedByResearch?: string
+  baseRevenue: number
+  cycleTime: number          // seconds
+  managerName: string
+  managerCost: number
 }
 
-export interface UpgradeState {
+export interface GeneratorState {
   id: string
-  level: number
+  owned: number              // quantity purchased
+  running: boolean           // is a cycle currently in progress?
+  progress: number           // 0-1, fraction of current cycle complete
+  hasManager: boolean        // auto-runs when true
+  totalRevenue: number       // lifetime revenue from this generator
 }
 
 export type PlanetEffectType =
-  | 'clickPower'
+  | 'cycleSpeed'
   | 'offlineEfficiency'
   | 'upgradeCostReduction'
-  | 'passiveGeneration'
+  | 'revenueBoost'
   | 'eventDuration'
 
 export interface PlanetSpecialEffect {
@@ -45,10 +47,10 @@ export interface PlanetState {
 }
 
 export interface PlanetBonuses {
-  clickPower: number
+  cycleSpeed: number
   offlineEfficiency: number
   upgradeCostReduction: number
-  passiveGeneration: number
+  revenueBoost: number
   eventDuration: number
 }
 
@@ -77,13 +79,13 @@ export interface AchievementDefinition {
   name: string
   description: string
   condition: (state: GameState) => boolean
-  bonusType: 'click' | 'production' | 'globalMult' | 'costReduction' | 'prestigeDust'
+  bonusType: 'revenue' | 'production' | 'globalMult' | 'costReduction' | 'prestigeDust'
   bonusValue: number
   bonusDescription: string
 }
 
 export interface AchievementBonuses {
-  click: number
+  revenue: number
   production: number
   globalMult: number
   costReduction: number
@@ -110,7 +112,7 @@ export interface GameEventDefinition {
   name: string
   description: string
   duration: number
-  effectType: 'production' | 'click' | 'costReduction'
+  effectType: 'production' | 'revenue' | 'costReduction'
   effectValue: number
 }
 
@@ -142,10 +144,8 @@ export interface Statistics {
 export interface GameState {
   energy: number
   totalEnergyGenerated: number
-  clickPower: number
-  passivePerSecond: number
   globalMultiplier: number
-  upgrades: UpgradeState[]
+  generators: GeneratorState[]
   planets: PlanetState[]
   lastSaveTime: number
   statistics: Statistics
@@ -159,7 +159,7 @@ export interface GameState {
 export interface SaveData {
   energy: number
   totalEnergyGenerated: number
-  upgrades: UpgradeState[]
+  generators: GeneratorState[]
   planets: PlanetState[]
   lastSaveTime: number
   statistics: Statistics
@@ -168,4 +168,6 @@ export interface SaveData {
   research?: ResearchState
   events?: EventState
   buyQuantity?: BuyQuantity
+  // Old save format detection
+  upgrades?: { id: string; level: number }[]
 }

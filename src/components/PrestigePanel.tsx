@@ -59,7 +59,7 @@ export default function PrestigePanel() {
               : 'Cannot prestige'}
         </button>
         <p className="text-xs text-gray-500 mt-1 text-center">
-          Resets energy, upgrades, and planets. Keeps dust, dust upgrades,
+          Resets energy, generators, and planets. Keeps dust, dust upgrades,
           achievements, and research.
         </p>
       </div>

@@ -1,5 +1,8 @@
 import { useGameStore } from '../store/gameStore'
-import { formatNumber } from '../game/formulas'
+import { formatNumber, getGeneratorRevenue, getEffectiveCycleTime } from '../game/formulas'
+import { GENERATORS } from '../game/generators'
+import { getPlanetBonuses } from '../game/planets'
+import { getAchievementBonuses } from '../game/achievements'
 import { IconEnergyBolt } from './Icons'
 
 const ENERGY_MILESTONES = [
@@ -19,15 +22,37 @@ function getEnergyStyle(total: number) {
 
 export default function EnergyDisplay() {
   const energy = useGameStore((s) => s.energy)
-  const passivePerSecond = useGameStore((s) => s.passivePerSecond)
+  const generators = useGameStore((s) => s.generators)
+  const planets = useGameStore((s) => s.planets)
+  const achievements = useGameStore((s) => s.achievements)
+  const prestige = useGameStore((s) => s.prestige)
+  const research = useGameStore((s) => s.research)
+  const events = useGameStore((s) => s.events)
   const globalMultiplier = useGameStore((s) => s.globalMultiplier)
   const totalEnergyGenerated = useGameStore((s) => s.totalEnergyGenerated)
 
-  const effectiveRate = passivePerSecond * globalMultiplier
+  const planetBonuses = getPlanetBonuses(planets)
+  const achievementBonuses = getAchievementBonuses(achievements)
+
+  // Calculate total per second from managed generators
+  let totalPerSec = 0
+  for (const gen of generators) {
+    if (!gen.hasManager || gen.owned === 0) continue
+    const def = GENERATORS.find((g) => g.id === gen.id)
+    if (!def) continue
+    const revenue = getGeneratorRevenue(
+      def, gen.owned, globalMultiplier,
+      planetBonuses, achievementBonuses, prestige,
+      research.unlockedNodes, events
+    )
+    const cycleTime = getEffectiveCycleTime(def, planetBonuses, prestige)
+    totalPerSec += revenue / cycleTime
+  }
+
   const milestone = getEnergyStyle(totalEnergyGenerated)
 
   return (
-    <div className="text-center py-6">
+    <div className="text-center py-4">
       <p className="text-sm text-gray-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
         <IconEnergyBolt className="w-4 h-4 text-green-400" />
         Terraforming Energy
@@ -38,9 +63,9 @@ export default function EnergyDisplay() {
       >
         {formatNumber(energy)}
       </p>
-      {effectiveRate > 0 && (
+      {totalPerSec > 0 && (
         <p className="text-sm text-gray-400 mt-2">
-          +{formatNumber(effectiveRate)}/sec
+          +{formatNumber(totalPerSec)}/sec
           {globalMultiplier > 1 && (
             <span className="text-blue-400 ml-2">
               ({formatNumber(globalMultiplier)}x)

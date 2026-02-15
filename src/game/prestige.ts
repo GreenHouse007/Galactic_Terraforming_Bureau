@@ -10,17 +10,17 @@ export const DUST_UPGRADES: DustUpgradeDefinition[] = [
     effectPerLevel: 100,
   },
   {
-    id: 'dust_click',
-    name: 'Stardust Hands',
-    description: '+50% click power per level',
+    id: 'dust_speed',
+    name: 'Temporal Accelerator',
+    description: 'Reduce all cycle times by 5% per level',
     cost: 30,
     maxLevel: 10,
-    effectPerLevel: 0.50,
+    effectPerLevel: 0.05,
   },
   {
-    id: 'dust_production',
+    id: 'dust_revenue',
     name: 'Stellar Infusion',
-    description: '+25% all production per level',
+    description: '+25% all revenue per level',
     cost: 50,
     maxLevel: 10,
     effectPerLevel: 0.25,
@@ -36,7 +36,7 @@ export const DUST_UPGRADES: DustUpgradeDefinition[] = [
   {
     id: 'dust_cost',
     name: 'Cosmic Discount',
-    description: '-5% upgrade costs per level',
+    description: '-5% generator costs per level',
     cost: 75,
     maxLevel: 5,
     effectPerLevel: 0.05,
@@ -55,12 +55,10 @@ export function calculateDustGain(totalEnergyGenerated: number, achievementPrest
   if (totalEnergyGenerated < 1_000_000) return 0
   let dust = Math.floor(150 * Math.sqrt(totalEnergyGenerated / 1_000_000) - 0.5)
 
-  // Achievement bonus for prestige dust
   if (achievementPrestigeDustBonus > 0) {
     dust = Math.floor(dust * (1 + achievementPrestigeDustBonus))
   }
 
-  // Research prestige boost
   if (researchPrestigeBoost) {
     dust = Math.floor(dust * 1.15)
   }

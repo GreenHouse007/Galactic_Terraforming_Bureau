@@ -1,12 +1,15 @@
-import type { PlanetBonuses, PrestigeState } from './types'
+import type { GeneratorState, PlanetBonuses, PrestigeState, AchievementBonuses } from './types'
+import { GENERATORS } from './generators'
+import { getGeneratorRevenue, getEffectiveCycleTime } from './formulas'
 
 const MAX_OFFLINE_SECONDS = 86400 // 24 hours
 
 export function calculateOfflineEnergy(
   lastSaveTime: number,
-  passivePerSecond: number,
+  generators: GeneratorState[],
   globalMultiplier: number,
   planetBonuses?: PlanetBonuses,
+  achievementBonuses?: AchievementBonuses,
   prestigeState?: PrestigeState,
   hasResearchOffline?: boolean
 ): { energy: number; seconds: number } {
@@ -14,7 +17,32 @@ export function calculateOfflineEnergy(
   const elapsedMs = now - lastSaveTime
   const elapsedSeconds = Math.min(elapsedMs / 1000, MAX_OFFLINE_SECONDS)
 
-  if (elapsedSeconds < 1 || passivePerSecond <= 0) {
+  if (elapsedSeconds < 1) {
+    return { energy: 0, seconds: 0 }
+  }
+
+  let totalEnergy = 0
+
+  // Only managed generators produce offline
+  for (const genState of generators) {
+    if (!genState.hasManager || genState.owned === 0) continue
+
+    const def = GENERATORS.find((g) => g.id === genState.id)
+    if (!def) continue
+
+    const cycleTime = getEffectiveCycleTime(def, planetBonuses, prestigeState)
+    const revenuePerCycle = getGeneratorRevenue(
+      def, genState.owned, globalMultiplier,
+      planetBonuses, achievementBonuses, prestigeState,
+      undefined, // no research nodes needed here (already factored into globalMult)
+      undefined  // no event bonus offline
+    )
+
+    const cycles = elapsedSeconds / cycleTime
+    totalEnergy += cycles * revenuePerCycle
+  }
+
+  if (totalEnergy <= 0) {
     return { energy: 0, seconds: 0 }
   }
 
@@ -36,6 +64,6 @@ export function calculateOfflineEnergy(
     efficiency += 0.50
   }
 
-  const energy = elapsedSeconds * passivePerSecond * globalMultiplier * efficiency
+  const energy = totalEnergy * efficiency
   return { energy, seconds: Math.floor(elapsedSeconds) }
 }

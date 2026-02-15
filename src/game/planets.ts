@@ -8,9 +8,9 @@ export const PLANETS: PlanetDefinition[] = [
     unlockCost: 250,
     multiplier: 1.5,
     specialEffect: {
-      type: 'clickPower',
-      value: 0.25,
-      description: '+25% click power',
+      type: 'cycleSpeed',
+      value: 0.10,
+      description: '-10% cycle times',
     },
   },
   {
@@ -34,7 +34,7 @@ export const PLANETS: PlanetDefinition[] = [
     specialEffect: {
       type: 'upgradeCostReduction',
       value: 0.10,
-      description: '-10% upgrade costs',
+      description: '-10% generator costs',
     },
   },
   {
@@ -44,9 +44,9 @@ export const PLANETS: PlanetDefinition[] = [
     unlockCost: 500_000,
     multiplier: 5,
     specialEffect: {
-      type: 'passiveGeneration',
+      type: 'revenueBoost',
       value: 0.30,
-      description: '+30% passive generation',
+      description: '+30% revenue',
     },
   },
   {
@@ -69,10 +69,10 @@ export function createInitialPlanetStates(): PlanetState[] {
 
 export function getPlanetBonuses(planetStates: PlanetState[]): PlanetBonuses {
   const bonuses: PlanetBonuses = {
-    clickPower: 0,
+    cycleSpeed: 0,
     offlineEfficiency: 0,
     upgradeCostReduction: 0,
-    passiveGeneration: 0,
+    revenueBoost: 0,
     eventDuration: 0,
   }
 
@@ -82,8 +82,8 @@ export function getPlanetBonuses(planetStates: PlanetState[]): PlanetBonuses {
     if (!def) continue
 
     switch (def.specialEffect.type) {
-      case 'clickPower':
-        bonuses.clickPower += def.specialEffect.value
+      case 'cycleSpeed':
+        bonuses.cycleSpeed += def.specialEffect.value
         break
       case 'offlineEfficiency':
         bonuses.offlineEfficiency += def.specialEffect.value
@@ -91,8 +91,8 @@ export function getPlanetBonuses(planetStates: PlanetState[]): PlanetBonuses {
       case 'upgradeCostReduction':
         bonuses.upgradeCostReduction += def.specialEffect.value
         break
-      case 'passiveGeneration':
-        bonuses.passiveGeneration += def.specialEffect.value
+      case 'revenueBoost':
+        bonuses.revenueBoost += def.specialEffect.value
         break
       case 'eventDuration':
         bonuses.eventDuration += def.specialEffect.value

@@ -4,17 +4,18 @@ import type {
   SaveData,
   BuyQuantity,
   EventState,
+  GeneratorState,
 } from '../game/types'
-import { UPGRADES, createInitialUpgradeStates } from '../game/upgrades'
+import { GENERATORS, createInitialGeneratorStates } from '../game/generators'
 import { PLANETS, createInitialPlanetStates, getPlanetBonuses } from '../game/planets'
 import { createInitialPrestigeState, calculateDustGain, getDustUpgradeCost, DUST_UPGRADES } from '../game/prestige'
 import { createInitialResearchState, canResearch, RESEARCH_NODES } from '../game/research'
 import { ACHIEVEMENTS, getAchievementBonuses, checkAchievements } from '../game/achievements'
 import { getRandomEventTime, getRandomEvent, EVENT_DEFINITIONS } from '../game/events'
 import {
-  calculateClickPower,
-  calculatePassivePerSecond,
   calculateGlobalMultiplier,
+  getGeneratorRevenue,
+  getEffectiveCycleTime,
   getBuyAmount,
   formatNumber,
 } from '../game/formulas'
@@ -25,8 +26,9 @@ import { saveGame, loadGame, deleteSave } from '../utils/persistence'
 export type Toast = { id: number; message: string; type: 'achievement' | 'event' | 'prestige' }
 
 interface GameActions {
-  click: () => void
-  purchaseUpgrade: (upgradeId: string) => void
+  runGenerator: (id: string) => void
+  buyGenerator: (id: string) => void
+  buyManager: (id: string) => void
   unlockPlanet: (planetId: string) => void
   tick: (deltaSec: number) => void
   loadGameState: () => Promise<{ offlineSeconds: number; offlineEnergy: number }>
@@ -60,10 +62,8 @@ function createInitialState(): GameState {
   return {
     energy: 0,
     totalEnergyGenerated: 0,
-    clickPower: 1,
-    passivePerSecond: 0,
     globalMultiplier: 1,
-    upgrades: createInitialUpgradeStates(),
+    generators: createInitialGeneratorStates(),
     planets: createInitialPlanetStates(),
     lastSaveTime: Date.now(),
     statistics: { totalClicks: 0, playtime: 0 },
@@ -90,38 +90,27 @@ export const useGameStore = create<Store>((set, get) => ({
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
   },
 
-  click: () => {
+  runGenerator: (id: string) => {
     const state = get()
-    const gained = state.clickPower * state.globalMultiplier
+    const gen = state.generators.find((g) => g.id === id)
+    if (!gen || gen.running || gen.owned === 0 || gen.hasManager) return
+
     set({
-      energy: state.energy + gained,
-      totalEnergyGenerated: state.totalEnergyGenerated + gained,
-      statistics: {
-        ...state.statistics,
-        totalClicks: state.statistics.totalClicks + 1,
-      },
+      generators: state.generators.map((g) =>
+        g.id === id ? { ...g, running: true, progress: 0 } : g
+      ),
     })
-    // Check achievements on click
-    const newState = get()
-    const newAch = checkAchievements(newState)
-    if (newAch.length > 0) {
-      set({ achievements: [...newState.achievements, ...newAch] })
-      for (const id of newAch) {
-        const def = ACHIEVEMENTS.find((a) => a.id === id)
-        if (def) get().addToast(`Achievement: ${def.name}!`, 'achievement')
-      }
-      get().recalcDerived()
-    }
   },
 
-  purchaseUpgrade: (upgradeId: string) => {
+  buyGenerator: (id: string) => {
     const state = get()
-    const upgState = state.upgrades.find((u) => u.id === upgradeId)
-    const def = UPGRADES.find((u) => u.id === upgradeId)
-    if (!upgState || !def) return
+    const genState = state.generators.find((g) => g.id === id)
+    const def = GENERATORS.find((g) => g.id === id)
+    if (!genState || !def) return
 
-    // Check research gate
-    if (def.gatedByResearch && !state.research.unlockedNodes.includes(def.gatedByResearch)) return
+    // Check research gate for tier 2 generators (index >= 5)
+    const genIndex = GENERATORS.indexOf(def)
+    if (genIndex >= 5 && !state.research.unlockedNodes.includes('res_tier2_unlock')) return
 
     const planetBonuses = getPlanetBonuses(state.planets)
     const achievementBonuses = getAchievementBonuses(state.achievements)
@@ -129,25 +118,55 @@ export const useGameStore = create<Store>((set, get) => ({
     const qty = hasBulkBuy ? state.buyQuantity : 1
 
     const { count, totalCost } = getBuyAmount(
-      def, upgState.level, state.energy, qty,
+      def, genState.owned, state.energy, qty,
       planetBonuses, achievementBonuses, state.prestige, state.events
     )
     if (count === 0) return
 
-    const newUpgrades = state.upgrades.map((u) =>
-      u.id === upgradeId ? { ...u, level: u.level + count } : u
+    const newGenerators = state.generators.map((g) =>
+      g.id === id ? { ...g, owned: g.owned + count } : g
     )
 
-    set({ energy: state.energy - totalCost, upgrades: newUpgrades })
-    get().recalcDerived()
+    set({ energy: state.energy - totalCost, generators: newGenerators })
+    audioManager.playSfx('purchase')
 
-    // Check achievements on purchase
+    // Check achievements
     const newState = get()
     const newAch = checkAchievements(newState)
     if (newAch.length > 0) {
       set({ achievements: [...newState.achievements, ...newAch] })
-      for (const id of newAch) {
-        const achDef = ACHIEVEMENTS.find((a) => a.id === id)
+      for (const achId of newAch) {
+        const achDef = ACHIEVEMENTS.find((a) => a.id === achId)
+        if (achDef) get().addToast(`Achievement: ${achDef.name}!`, 'achievement')
+      }
+      get().recalcDerived()
+    }
+  },
+
+  buyManager: (id: string) => {
+    const state = get()
+    const def = GENERATORS.find((g) => g.id === id)
+    const genState = state.generators.find((g) => g.id === id)
+    if (!def || !genState || genState.hasManager) return
+    if (state.energy < def.managerCost) return
+
+    const newGenerators = state.generators.map((g) =>
+      g.id === id ? { ...g, hasManager: true, running: g.owned > 0, progress: 0 } : g
+    )
+
+    set({
+      energy: state.energy - def.managerCost,
+      generators: newGenerators,
+    })
+    audioManager.playSfx('purchase')
+
+    // Check achievements
+    const newState = get()
+    const newAch = checkAchievements(newState)
+    if (newAch.length > 0) {
+      set({ achievements: [...newState.achievements, ...newAch] })
+      for (const achId of newAch) {
+        const achDef = ACHIEVEMENTS.find((a) => a.id === achId)
         if (achDef) get().addToast(`Achievement: ${achDef.name}!`, 'achievement')
       }
       get().recalcDerived()
@@ -167,7 +186,6 @@ export const useGameStore = create<Store>((set, get) => ({
 
     let energyAfter = state.energy - def.unlockCost
 
-    // Research: planet refund
     if (state.research.unlockedNodes.includes('res_planet_refund')) {
       energyAfter += def.unlockCost * 0.25
     }
@@ -176,13 +194,12 @@ export const useGameStore = create<Store>((set, get) => ({
     get().recalcDerived()
     audioManager.playSfx('purchase')
 
-    // Check achievements
     const newState = get()
     const newAch = checkAchievements(newState)
     if (newAch.length > 0) {
       set({ achievements: [...newState.achievements, ...newAch] })
-      for (const id of newAch) {
-        const achDef = ACHIEVEMENTS.find((a) => a.id === id)
+      for (const achId of newAch) {
+        const achDef = ACHIEVEMENTS.find((a) => a.id === achId)
         if (achDef) get().addToast(`Achievement: ${achDef.name}!`, 'achievement')
       }
       get().recalcDerived()
@@ -192,30 +209,66 @@ export const useGameStore = create<Store>((set, get) => ({
   tick: (deltaSec: number) => {
     const state = get()
     const now = Date.now()
+    const planetBonuses = getPlanetBonuses(state.planets)
+    const achievementBonuses = getAchievementBonuses(state.achievements)
 
-    // Passive generation
-    let gained = 0
-    if (state.passivePerSecond > 0) {
-      gained = state.passivePerSecond * state.globalMultiplier * deltaSec
-    }
+    let energyGained = 0
+    const newGenerators: GeneratorState[] = state.generators.map((gen) => {
+      if (!gen.running || gen.owned === 0) return gen
 
-    // Auto-click (research)
-    if (state.research.unlockedNodes.includes('res_auto_click')) {
-      // Accumulate and fire click once per second via fractional tracking
-      // Simple approach: add clickPower * globalMultiplier * deltaSec
-      gained += state.clickPower * state.globalMultiplier * deltaSec
-    }
+      const def = GENERATORS.find((g) => g.id === gen.id)
+      if (!def) return gen
+
+      const cycleTime = getEffectiveCycleTime(def, planetBonuses, state.prestige)
+      const progressDelta = deltaSec / cycleTime
+      let newProgress = gen.progress + progressDelta
+      const updated = { ...gen }
+
+      if (newProgress >= 1) {
+        // Collect revenue
+        const revenue = getGeneratorRevenue(
+          def, gen.owned, state.globalMultiplier,
+          planetBonuses, achievementBonuses, state.prestige,
+          state.research.unlockedNodes, state.events
+        )
+        energyGained += revenue
+        updated.totalRevenue = gen.totalRevenue + revenue
+
+        if (gen.hasManager) {
+          // Auto-restart: handle multiple completions in one tick
+          const extraProgress = newProgress - 1
+          updated.progress = extraProgress % 1
+          updated.running = true
+
+          // If more than one full cycle completed, collect those too
+          const extraCycles = Math.floor(extraProgress)
+          if (extraCycles > 0) {
+            const extraRevenue = revenue * extraCycles
+            energyGained += extraRevenue
+            updated.totalRevenue += extraRevenue
+          }
+        } else {
+          updated.running = false
+          updated.progress = 0
+        }
+      } else {
+        updated.progress = newProgress
+      }
+
+      return updated
+    })
 
     const updates: Partial<GameState> = {
+      generators: newGenerators,
       statistics: {
         ...state.statistics,
         playtime: state.statistics.playtime + deltaSec,
       },
     }
 
-    if (gained > 0) {
-      updates.energy = state.energy + gained
-      updates.totalEnergyGenerated = state.totalEnergyGenerated + gained
+    if (energyGained > 0) {
+      updates.energy = state.energy + energyGained
+      updates.totalEnergyGenerated = state.totalEnergyGenerated + energyGained
     }
 
     // Event spawning
@@ -226,7 +279,7 @@ export const useGameStore = create<Store>((set, get) => ({
         pendingEvent: {
           eventId: eventDef.id,
           spawnedAt: now,
-          expiresAt: now + 30_000, // 30s to click
+          expiresAt: now + 30_000,
         },
         nextEventTime: getRandomEventTime(),
       }
@@ -255,7 +308,7 @@ export const useGameStore = create<Store>((set, get) => ({
 
     set(updates as GameState)
 
-    // Check achievements every ~5 seconds (check if playtime crossed a 5s boundary)
+    // Check achievements every ~5 seconds
     const prevPlaytime = state.statistics.playtime
     const newPlaytime = prevPlaytime + deltaSec
     if (Math.floor(newPlaytime / 5) > Math.floor(prevPlaytime / 5)) {
@@ -263,8 +316,8 @@ export const useGameStore = create<Store>((set, get) => ({
       const newAch = checkAchievements(newState)
       if (newAch.length > 0) {
         set({ achievements: [...newState.achievements, ...newAch] })
-        for (const id of newAch) {
-          const achDef = ACHIEVEMENTS.find((a) => a.id === id)
+        for (const achId of newAch) {
+          const achDef = ACHIEVEMENTS.find((a) => a.id === achId)
           if (achDef) get().addToast(`Achievement: ${achDef.name}!`, 'achievement')
         }
         get().recalcDerived()
@@ -274,7 +327,6 @@ export const useGameStore = create<Store>((set, get) => ({
 
   recalcDerived: () => {
     const state = get()
-    const planetBonuses = getPlanetBonuses(state.planets)
     const achievementBonuses = getAchievementBonuses(state.achievements)
     const planetStatesWithMult = state.planets.map((p) => {
       const def = PLANETS.find((d) => d.id === p.id)
@@ -282,16 +334,7 @@ export const useGameStore = create<Store>((set, get) => ({
     })
 
     set({
-      clickPower: calculateClickPower(
-        UPGRADES, state.upgrades, planetBonuses, achievementBonuses, state.prestige, state.events
-      ),
-      passivePerSecond: calculatePassivePerSecond(
-        UPGRADES, state.upgrades, planetBonuses, achievementBonuses, state.prestige,
-        state.research.unlockedNodes, state.events
-      ),
-      globalMultiplier: calculateGlobalMultiplier(
-        UPGRADES, state.upgrades, planetStatesWithMult, achievementBonuses
-      ),
+      globalMultiplier: calculateGlobalMultiplier(planetStatesWithMult, achievementBonuses),
     })
   },
 
@@ -310,14 +353,13 @@ export const useGameStore = create<Store>((set, get) => ({
     )
     if (dustGain <= 0) return
 
-    // Calculate starting energy from headstart
     const headstart = state.prestige.dustUpgrades.find((u) => u.id === 'dust_starting')
     const startingEnergy = headstart ? headstart.level * 100 : 0
 
     set({
       energy: startingEnergy,
       totalEnergyGenerated: 0,
-      upgrades: createInitialUpgradeStates(),
+      generators: createInitialGeneratorStates(),
       planets: createInitialPlanetStates(),
       prestige: {
         ...state.prestige,
@@ -330,13 +372,12 @@ export const useGameStore = create<Store>((set, get) => ({
     get().addToast(`Stellar Reset! Earned ${formatNumber(dustGain)} dust`, 'prestige')
     audioManager.playSfx('prestige')
 
-    // Check prestige achievements
     const newState = get()
     const newAch = checkAchievements(newState)
     if (newAch.length > 0) {
       set({ achievements: [...newState.achievements, ...newAch] })
-      for (const id of newAch) {
-        const achDef = ACHIEVEMENTS.find((a) => a.id === id)
+      for (const achId of newAch) {
+        const achDef = ACHIEVEMENTS.find((a) => a.id === achId)
         if (achDef) get().addToast(`Achievement: ${achDef.name}!`, 'achievement')
       }
     }
@@ -419,19 +460,30 @@ export const useGameStore = create<Store>((set, get) => ({
     const saved = await loadGame()
     if (!saved) return { offlineSeconds: 0, offlineEnergy: 0 }
 
-    // Migrate old saves
+    // Migrate old saves (had upgrades, no generators)
+    const isOldSave = saved.upgrades && !saved.generators
+    const generators = isOldSave
+      ? createInitialGeneratorStates()
+      : (saved.generators ?? createInitialGeneratorStates())
+
     const prestige = saved.prestige ?? createInitialPrestigeState()
     const achievements = saved.achievements ?? []
     const research = saved.research ?? createInitialResearchState()
     const events = saved.events ?? createInitialEventState()
     const buyQuantity = saved.buyQuantity ?? 1
 
-    // Ensure new upgrades exist in saved state
-    const savedUpgradeIds = new Set(saved.upgrades.map((u) => u.id))
-    const migratedUpgrades = [...saved.upgrades]
-    for (const def of UPGRADES) {
-      if (!savedUpgradeIds.has(def.id)) {
-        migratedUpgrades.push({ id: def.id, level: 0 })
+    // Ensure all generators exist in saved state
+    const savedGenIds = new Set(generators.map((g) => g.id))
+    for (const def of GENERATORS) {
+      if (!savedGenIds.has(def.id)) {
+        generators.push({
+          id: def.id,
+          owned: 0,
+          running: false,
+          progress: 0,
+          hasManager: false,
+          totalRevenue: 0,
+        })
       }
     }
 
@@ -443,10 +495,16 @@ export const useGameStore = create<Store>((set, get) => ({
       }
     }
 
+    // Migrate old dust upgrade IDs
+    for (const du of prestige.dustUpgrades) {
+      if (du.id === 'dust_click') du.id = 'dust_speed'
+      if (du.id === 'dust_production') du.id = 'dust_revenue'
+    }
+
     set({
       energy: saved.energy,
       totalEnergyGenerated: saved.totalEnergyGenerated,
-      upgrades: migratedUpgrades,
+      generators,
       planets: saved.planets,
       lastSaveTime: saved.lastSaveTime,
       statistics: saved.statistics,
@@ -461,12 +519,14 @@ export const useGameStore = create<Store>((set, get) => ({
     // Calculate offline progress
     const state = get()
     const planetBonuses = getPlanetBonuses(state.planets)
+    const achievementBonuses = getAchievementBonuses(state.achievements)
     const hasResearchOffline = state.research.unlockedNodes.includes('res_offline')
     const offline = calculateOfflineEnergy(
       saved.lastSaveTime,
-      state.passivePerSecond,
+      state.generators,
       state.globalMultiplier,
       planetBonuses,
+      achievementBonuses,
       state.prestige,
       hasResearchOffline
     )
@@ -486,7 +546,7 @@ export const useGameStore = create<Store>((set, get) => ({
     const data: SaveData = {
       energy: state.energy,
       totalEnergyGenerated: state.totalEnergyGenerated,
-      upgrades: state.upgrades,
+      generators: state.generators,
       planets: state.planets,
       lastSaveTime: Date.now(),
       statistics: state.statistics,

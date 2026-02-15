@@ -1,23 +1,23 @@
 import type {
-  UpgradeDefinition,
-  UpgradeState,
+  GeneratorDef,
   PlanetBonuses,
   AchievementBonuses,
   PrestigeState,
   EventState,
   BuyQuantity,
 } from './types'
+import { getMilestoneMultiplier } from './generators'
 import { EVENT_DEFINITIONS } from './events'
 
-export function getUpgradeCost(
-  def: UpgradeDefinition,
-  level: number,
+export function getGeneratorCost(
+  def: GeneratorDef,
+  owned: number,
   planetBonuses?: PlanetBonuses,
   achievementBonuses?: AchievementBonuses,
   prestigeState?: PrestigeState,
   eventState?: EventState
 ): number {
-  const baseCost = Math.floor(def.baseCost * Math.pow(def.costScaling, level))
+  const baseCost = Math.floor(def.baseCost * Math.pow(def.costScaling, owned))
 
   let reduction = 0
   if (planetBonuses) reduction += planetBonuses.upgradeCostReduction
@@ -37,126 +37,85 @@ export function getUpgradeCost(
     }
   }
 
-  return Math.floor(baseCost * Math.max(0.1, 1 - reduction))
+  return Math.max(1, Math.floor(baseCost * Math.max(0.1, 1 - reduction)))
 }
 
-export function getUpgradeEffect(def: UpgradeDefinition, level: number): number {
-  if (level === 0) return 0
-  if (def.type === 'click') {
-    // Quadratic: baseEffect * (level + 0.2 * level * (level - 1))
-    return def.baseEffect * (level + 0.2 * level * (level - 1))
-  }
-  if (def.type === 'passive') {
-    return def.baseEffect * level * Math.pow(1 + def.effectScaling, level - 1)
-  }
-  if (def.type === 'multiplier') {
-    return 1 + def.baseEffect * level
-  }
-  return 0
-}
-
-export function calculateClickPower(
-  upgradeDefs: UpgradeDefinition[],
-  upgradeStates: UpgradeState[],
-  planetBonuses?: PlanetBonuses,
-  achievementBonuses?: AchievementBonuses,
-  prestigeState?: PrestigeState,
-  eventState?: EventState
-): number {
-  let power = 1
-  for (const state of upgradeStates) {
-    const def = upgradeDefs.find((d) => d.id === state.id)
-    if (def && def.type === 'click') {
-      power += getUpgradeEffect(def, state.level)
-    }
-  }
-
-  // Planet click bonus
-  if (planetBonuses) power *= 1 + planetBonuses.clickPower
-
-  // Achievement click bonus
-  if (achievementBonuses) power *= 1 + achievementBonuses.click
-
-  // Prestige dust_click bonus
-  if (prestigeState) {
-    const dustClick = prestigeState.dustUpgrades.find((u) => u.id === 'dust_click')
-    if (dustClick && dustClick.level > 0) {
-      power *= 1 + 0.50 * dustClick.level
-    }
-  }
-
-  // Event click bonus
-  if (eventState?.activeEvent) {
-    const eventDef = EVENT_DEFINITIONS.find((e) => e.id === eventState.activeEvent!.eventId)
-    if (eventDef && eventDef.effectType === 'click') {
-      power *= eventDef.effectValue
-    }
-  }
-
-  return power
-}
-
-export function calculatePassivePerSecond(
-  upgradeDefs: UpgradeDefinition[],
-  upgradeStates: UpgradeState[],
+export function getGeneratorRevenue(
+  def: GeneratorDef,
+  owned: number,
+  globalMultiplier: number,
   planetBonuses?: PlanetBonuses,
   achievementBonuses?: AchievementBonuses,
   prestigeState?: PrestigeState,
   researchNodes?: string[],
   eventState?: EventState
 ): number {
-  let passive = 0
-  for (const state of upgradeStates) {
-    const def = upgradeDefs.find((d) => d.id === state.id)
-    if (def && def.type === 'passive') {
-      passive += getUpgradeEffect(def, state.level)
-    }
-  }
+  if (owned === 0) return 0
 
-  // Planet passive bonus
-  if (planetBonuses) passive *= 1 + planetBonuses.passiveGeneration
+  let revenue = def.baseRevenue * owned * getMilestoneMultiplier(owned)
+
+  // Planet revenue bonus
+  if (planetBonuses) revenue *= 1 + planetBonuses.revenueBoost
 
   // Achievement production bonus
-  if (achievementBonuses) passive *= 1 + achievementBonuses.production
+  if (achievementBonuses) revenue *= 1 + achievementBonuses.production
 
-  // Prestige dust_production bonus
+  // Achievement revenue bonus
+  if (achievementBonuses) revenue *= 1 + achievementBonuses.revenue
+
+  // Prestige dust_revenue bonus
   if (prestigeState) {
-    const dustProd = prestigeState.dustUpgrades.find((u) => u.id === 'dust_production')
-    if (dustProd && dustProd.level > 0) {
-      passive *= 1 + 0.25 * dustProd.level
+    const dustRevenue = prestigeState.dustUpgrades.find((u) => u.id === 'dust_revenue')
+    if (dustRevenue && dustRevenue.level > 0) {
+      revenue *= 1 + 0.25 * dustRevenue.level
     }
   }
 
-  // Research passive boost
-  if (researchNodes?.includes('res_passive_boost')) {
-    passive *= 1.20
+  // Research revenue boost
+  if (researchNodes?.includes('res_revenue_boost')) {
+    revenue *= 1.20
   }
 
   // Event production bonus
   if (eventState?.activeEvent) {
     const eventDef = EVENT_DEFINITIONS.find((e) => e.id === eventState.activeEvent!.eventId)
-    if (eventDef && eventDef.effectType === 'production') {
-      passive *= eventDef.effectValue
+    if (eventDef && (eventDef.effectType === 'production' || eventDef.effectType === 'revenue')) {
+      revenue *= eventDef.effectValue
     }
   }
 
-  return passive
+  // Global multiplier (from planets + achievements)
+  revenue *= globalMultiplier
+
+  return revenue
+}
+
+export function getEffectiveCycleTime(
+  def: GeneratorDef,
+  planetBonuses?: PlanetBonuses,
+  prestigeState?: PrestigeState,
+): number {
+  let time = def.cycleTime
+
+  // Planet cycle speed bonus
+  if (planetBonuses) time *= Math.max(0.1, 1 - planetBonuses.cycleSpeed)
+
+  // Prestige dust_speed bonus
+  if (prestigeState) {
+    const dustSpeed = prestigeState.dustUpgrades.find((u) => u.id === 'dust_speed')
+    if (dustSpeed && dustSpeed.level > 0) {
+      time *= Math.max(0.1, 1 - 0.05 * dustSpeed.level)
+    }
+  }
+
+  return time
 }
 
 export function calculateGlobalMultiplier(
-  upgradeDefs: UpgradeDefinition[],
-  upgradeStates: UpgradeState[],
   planetStates: { id: string; unlocked: boolean; multiplier: number }[],
   achievementBonuses?: AchievementBonuses
 ): number {
   let mult = 1
-
-  for (const state of upgradeStates) {
-    const def = upgradeDefs.find((d) => d.id === state.id)
-    if (def && def.type === 'multiplier' && state.level > 0) {
-      mult *= getUpgradeEffect(def, state.level)
-    }
-  }
 
   for (const planet of planetStates) {
     if (planet.unlocked) {
@@ -172,8 +131,8 @@ export function calculateGlobalMultiplier(
 }
 
 export function getMultiBuyCost(
-  def: UpgradeDefinition,
-  currentLevel: number,
+  def: GeneratorDef,
+  currentOwned: number,
   quantity: number,
   planetBonuses?: PlanetBonuses,
   achievementBonuses?: AchievementBonuses,
@@ -182,14 +141,14 @@ export function getMultiBuyCost(
 ): number {
   let total = 0
   for (let i = 0; i < quantity; i++) {
-    total += getUpgradeCost(def, currentLevel + i, planetBonuses, achievementBonuses, prestigeState, eventState)
+    total += getGeneratorCost(def, currentOwned + i, planetBonuses, achievementBonuses, prestigeState, eventState)
   }
   return total
 }
 
 export function getMaxAffordable(
-  def: UpgradeDefinition,
-  currentLevel: number,
+  def: GeneratorDef,
+  currentOwned: number,
   energy: number,
   planetBonuses?: PlanetBonuses,
   achievementBonuses?: AchievementBonuses,
@@ -199,7 +158,7 @@ export function getMaxAffordable(
   let count = 0
   let totalCost = 0
   for (let i = 0; i < 1000; i++) {
-    const cost = getUpgradeCost(def, currentLevel + i, planetBonuses, achievementBonuses, prestigeState, eventState)
+    const cost = getGeneratorCost(def, currentOwned + i, planetBonuses, achievementBonuses, prestigeState, eventState)
     if (totalCost + cost > energy) break
     totalCost += cost
     count++
@@ -208,8 +167,8 @@ export function getMaxAffordable(
 }
 
 export function getBuyAmount(
-  def: UpgradeDefinition,
-  currentLevel: number,
+  def: GeneratorDef,
+  currentOwned: number,
   energy: number,
   buyQuantity: BuyQuantity,
   planetBonuses?: PlanetBonuses,
@@ -218,13 +177,13 @@ export function getBuyAmount(
   eventState?: EventState
 ): { count: number; totalCost: number } {
   if (buyQuantity === 'max') {
-    const count = getMaxAffordable(def, currentLevel, energy, planetBonuses, achievementBonuses, prestigeState, eventState)
-    const totalCost = getMultiBuyCost(def, currentLevel, count, planetBonuses, achievementBonuses, prestigeState, eventState)
+    const count = getMaxAffordable(def, currentOwned, energy, planetBonuses, achievementBonuses, prestigeState, eventState)
+    const totalCost = getMultiBuyCost(def, currentOwned, count, planetBonuses, achievementBonuses, prestigeState, eventState)
     return { count, totalCost }
   }
 
   const count = buyQuantity as number
-  const totalCost = getMultiBuyCost(def, currentLevel, count, planetBonuses, achievementBonuses, prestigeState, eventState)
+  const totalCost = getMultiBuyCost(def, currentOwned, count, planetBonuses, achievementBonuses, prestigeState, eventState)
   if (totalCost > energy) return { count: 0, totalCost: 0 }
   return { count, totalCost }
 }
